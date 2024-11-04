@@ -1,16 +1,19 @@
 # Use the official Node.js 18 Alpine image
 FROM node:18-alpine
 
-# Create and set the working directory
+# Set the working directory
 WORKDIR /app_jedy
 
-# Copy package.json and package-lock.json and all files
-COPY . .
+# Copy package.json and package-lock.json
+COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Expose the port the app runs on - # required for docker desktop port mapping
+# Copy the rest of the app files
+COPY . .
+
+# Expose the port the app runs on
 EXPOSE 4000
 
 # Run the application

@@ -436,3 +436,63 @@ Use volume mapping to ensure nodemon can detect changes in your code.
 
 View logs directly in the terminal or use the docker logs command for detached containers.
 By following these steps, you'll be able to see real-time logs and automatically restart your application during development.
+
+---
+
+1. Container Name
+   By default, Docker will assign a random name to your container if you don’t specify one. You can choose a custom name here, like my_jedy_app_container, to make it easier to identify and manage.
+   Example: If you name your container my_jedy_app_container, you’ll be able to use commands like docker logs my_jedy_app_container or docker stop my_jedy_app_container to interact with it by name instead of using the container ID.
+2. Ports
+   This setting is for port mapping, which connects a port on your machine (the “host”) to a port on the container.
+   Since your app listens on port 4000 inside the container (as defined by EXPOSE 4000 in your Dockerfile), you need to map that to a port on your host. For example:
+   Host Port: 4000 (your machine’s port)
+   Container Port: 4000 (the app’s port inside the container)
+   Example: By setting this mapping, you can access the app in your browser at http://localhost:4000.
+3. Volumes
+   Volumes allow you to share files between your host machine and the container. This can be very useful for development if you want changes in your code on your machine to be immediately reflected in the container.
+   You can specify a folder on your host (e.g., your project directory) and map it to a folder inside the container (e.g., /app_jedy).
+   Example: To map your project folder:
+   Host Path: Path to your local project directory (e.g., /path/to/your/project)
+   Container Path: /app_jedy
+   Benefit: With this setup, any code changes you make in the local directory will update inside the container without needing to rebuild the image each time.
+4. Environment Variables
+   This setting lets you define environment variables for the container, often used to store sensitive information like API keys or configuration settings.
+   For example, if you’re using a .env file locally for settings like PORT=4000, you could set those directly in Docker as environment variables.
+   Example:
+   Key: PORT
+   Value: 4000
+
+   This approach allows your app to access environment-specific settings within the container.
+   How to Use These Settings with Your Project
+   Name: Give it a custom name like my_jedy_app.
+   Ports: Map 4000 on your host to 4000 in the container.
+   Volumes: Map your local project directory to /app_jedy for live code updates.
+   Environment Variables: Add any required environment variables, such as PORT, if not already handled in your code.
+   Once configured, click Run to start the container with these custom settings. You can then access your app at http://localhost:4000 and manage the container using its custom name.
+
+---
+
+Solution : Update Your Docker Compose for Development
+If you're using Docker Compose for development, you can configure it to handle volumes like this:
+
+```
+version: '3'
+services:
+  app:
+    image: jedy_app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app_jedy
+      - /app_jedy/node_modules
+```
+
+Explanation of Benefits
+With this setup:
+
+Code changes on your host machine will update in real-time inside the container.
+Dependencies will remain installed inside the container and won’t be overwritten by the host directory.
+This allows you to avoid the MODULE_NOT_FOUND errors caused by the absence of node_modules in the host directory.

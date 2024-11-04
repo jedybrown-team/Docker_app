@@ -1,0 +1,17 @@
+# Ignore node modules on the host
+node_modules
+
+# Ignore logs and temporary files
+npm-debug.log
+*.log
+
+# Ignore local environment files
+.env
+
+# Ignore source control files
+.git
+.gitignore
+
+# Ignore build output
+dist
+build
