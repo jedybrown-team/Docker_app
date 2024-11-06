@@ -1,0 +1,48 @@
+version: "3"
+services:
+  jedy_app:
+    build: .
+    image: jedy_image:v2
+    container_name: jedy_container
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env # Loads environment variables for jedy_app from .env
+    volumes:
+      - ./src:/app_jedy # Mount the files in my src to /app_jedy wich is in the container
+      - ./app_jedy/node_modules
+    # volumes:
+    #   - ./src:/app_jedy:delegated # Maps `src` to `/app_jedy` and gives Docker control over managing sync performance
+    #   - /app_jedy/node_modules # This is an anonymous volume to keep `node_modules` in the container
+
+  db:
+    image: mysql:8.0 # Example of a pre-built image from Docker Hub
+    container_name: jedy_db
+    env_file:
+      - .env # Loads environment variables for db from .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306" # Maps MySQL port
+    volumes:
+      - db_data:/var/lib/mysql # Persist database data
+
+  school_app_dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "4000:4000"
+
+  school_app_prod:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    ports:
+      - "4000:4000"
+
+volumes:
+  db_data:

@@ -1,0 +1,23 @@
+version: "3"
+services:
+  api:
+    build: ./api
+    image: api_image:v1
+    container_name: api_container
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./api:/app_jedy:delegated
+      - /app_jedy/node_modules
+
+  myblog:
+    build: ./myblog
+    image: myblog_image:v1
+    container_name: myblog_container
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./myblog:/app_jedy
+      - /app_jedy/node_modules
+    stdin_open: true
+    tty: true
