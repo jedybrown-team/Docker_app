@@ -799,8 +799,8 @@ It will prompt you for your Docker Hub username and password. Enter your credent
 To tag the images, you can run the following command for each image:
 
 ```
-docker tag myblog_image:v1 your_dockerhub_username/myblog:v1
-docker tag api_image:v1 your_dockerhub_username/api:v1
+docker tag myblog_image:v1 your_dockerhub_username/myblog:v1 e.g docker tag myblog_image:v1 jedybrown/myblog:v1
+docker tag api_image:v1 your_dockerhub_username/api:v1 e.g docker tag api_image:v1 jedybrown/api:v1
 ```
 
 Replace your_dockerhub_username with your actual Docker Hub username. The :v1 is your image tag (you can use any tag, like v1, latest, etc.).
@@ -809,8 +809,8 @@ Replace your_dockerhub_username with your actual Docker Hub username. The :v1 is
    After tagging your images, you can now push them to Docker Hub using the docker push command. For each image, run:
 
 ```
-docker push your_dockerhub_username/myblog:v1
-docker push your_dockerhub_username/api:v1
+docker push your_dockerhub_username/myblog:v1 e.g docker push jedybrown/myblog:v1
+docker push your_dockerhub_username/api:v1 e.g docker push jedybrown/api:v1
 ```
 
 This will upload the images to your Docker Hub account under the specified repositories.
@@ -845,3 +845,388 @@ Push the files:
 Now your entire project, including the docker-compose.yml, is available on GitHub.
 Verify on Docker Hub
 After pushing your images, go to Docker Hub, log in, and check your repositories. You should see myblog and api repositories with the images you just pushed.
+
+==========
+
+## networks
+
+Docker networking is an essential part of how containers communicate with each other and with the outside world. Let’s break down the main concepts:
+
+1. Docker Network Types
+   Docker supports different network types, each with its specific use case:
+
+- Bridge Network (default for most containers):
+
+A private internal network where containers can communicate with each other.
+By default, if you run a container without specifying a network, Docker will attach it to the default bridge network.
+Containers on the same bridge network can talk to each other via container names as hostnames.
+
+- Host Network:
+
+In this mode, the container shares the host’s networking stack.
+Useful for applications that need high network performance or that should expose their services directly on the host network (e.g., web servers).
+It only works on Linux (on Windows, containers run in isolated network namespaces).
+
+- Overlay Network:
+
+Enables multi-host networking, allowing containers across different Docker hosts to communicate.
+Commonly used in Docker Swarm and Kubernetes setups to enable service discovery and container communication across hosts.
+
+- None:
+
+The container has its own isolated network stack with no external network access.
+Useful for security-sensitive tasks or for containers that don’t require networking.
+
+- macvlan:
+
+Assigns a MAC address to each container to make it look like a physical device on your network.
+Often used when you want each container to appear as a unique device on the network.
+
+2. Creating and Managing Docker Networks
+   Docker makes it easy to create custom networks to isolate or organize your containers:
+
+```
+# Create a bridge network
+docker network create jedy_bridge_network
+
+# List networks
+docker network ls
+
+# Inspect network details
+docker network inspect jedy_bridge_network
+
+# Remove a network
+docker network rm my_bridge_network
+```
+
+3. Connecting Containers to Networks
+   You can explicitly specify a network for containers, which is useful for grouping services together:
+
+```
+# Run a container on a custom network
+docker run -d --network my_bridge_network --name app_container my_app_image
+
+# Connect a running container to a network
+docker network connect multi-host-network container1
+
+# You can specify the IP address you want to be assigned to the container's interface
+docker network connect --ip 10.10.36.122 multi-host-network container2
+
+# Create a network alias for a container (--alias)
+docker network connect --alias db --alias mysql multi-host-network container2
+
+# Connect an existing container to a network
+docker network connect my_bridge_network another_container
+
+# Disconnect a container from a network
+docker network disconnect my_bridge_network app_container
+```
+
+4. Using Docker Compose with Networks
+   With Docker Compose, you can define networks in your docker-compose.yml file, making it simple to manage multiple services and their connections:
+
+```
+version: "3"
+services:
+  web:
+    image: my_web_image
+    networks:
+      - my_network
+  db:
+    image: my_db_image
+    networks:
+      - my_network
+
+networks:
+  my_network:
+    driver: bridge
+```
+
+In this setup:
+
+Both web and db services are on the my_network network.
+Containers can reference each other by their service names (web and db) within the network.
+
+1. DNS Resolution in Docker Networks
+   In Docker networks, especially in bridge and overlay networks, Docker provides internal DNS resolution, so containers can communicate by their names.
+
+For example, in a Compose file:
+
+```
+services:
+  web:
+    depends_on:
+      - db
+    image: my_web_image
+  db:
+    image: my_db_image
+```
+
+Here, web can connect to db by simply using the hostname db.
+
+Network Security and Isolation
+Docker networks provide isolation between containers, but for additional security:
+
+Use separate networks for different parts of your application.
+Consider using firewalls or access control lists (ACLs) for fine-grained control.
+Limit the services exposed to the outside world by only mapping essential ports to the host.
+
+For your setup, let's add Docker networks to facilitate better internal communication between your api and myblog services. Here’s how to adjust your docker-compose.yml file with a custom network:
+
+```
+version: "3"
+
+services:
+  api:
+    build: ./api
+    image: api_image:v1
+    container_name: api_container
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./api:/app_jedy:delegated
+      - /app_jedy/node_modules
+    networks:
+      - app-network # Connects `api` to the custom network
+
+  myblog:
+    build: ./myblog
+    image: myblog_image:v1
+    container_name: myblog_container
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./myblog:/app_jedy
+      - /app_jedy/node_modules
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network # Connects `myblog` to the custom network
+
+# Define the custom network
+networks:
+  app-network:
+    driver: bridge
+```
+
+Explanation of This Setup
+Custom Network app-network:
+
+The app-network is a user-defined bridge network that allows api and myblog services to communicate securely with each other by name. For example, myblog can reach api by using http://api:4000 instead of http://localhost:4000.
+Service Network Connections:
+
+Both api and myblog services are connected to app-network, meaning they can communicate with each other within this network without needing to expose ports externally beyond what you defined (4000:4000 for api and 3000:3000 for myblog).
+Improved Isolation and Security:
+
+By limiting network scope to the custom app-network, external access is restricted. Only services on this network can communicate, and others outside this network can't access it directly.
+How to Use This in Code
+In the React code within myblog, you would replace any API calls to localhost with http://api:4000 so that requests are routed correctly to the backend API.
+This setup allows more controlled, secure, and efficient communication between the frontend and backend services in your Docker environment.
+
+A custom network called app-network is defined and used to connect the api and myblog services. Here’s a breakdown of how this network works and its purpose:
+
+1. Custom Network Definition (app-network):
+   The networks section at the bottom of the Compose file defines a custom network named app-network.
+   The network uses the bridge driver, which is the default network type in Docker for isolating services while allowing them to communicate with each other within the same network.
+   A custom bridge network, like app-network, provides better control over inter-service communication than the default network created by Docker Compose.
+2. Network Connection for Each Service:
+   api service: The api service is connected to app-network, allowing it to be reached by other services on this network.
+   myblog service: Similarly, the myblog service is also connected to app-network.
+   By specifying networks: - app-network under each service, both api and myblog are on the same custom network. This enables them to communicate directly with each other by their container names (e.g., api and myblog), rather than using localhost or IP addresses.
+
+3. Service Communication Using Container Names:
+   Because both services are on the same network, they can use each other’s service names as hostnames.
+   For example, if myblog needs to make a request to the backend api service, it can use http://api:4000 (instead of http://localhost:4000), where api is the container name defined in the Compose file.
+   This internal DNS feature within Docker resolves the container name (api) to the corresponding container’s IP address on the app-network, facilitating easy communication between services.
+4. Security and Isolation Benefits:
+   Services connected to app-network can communicate with each other, but are isolated from containers outside this network.
+   Only the ports specified (like 4000:4000 for api and 3000:3000 for myblog) are accessible outside Docker, creating a more secure environment since traffic between api and myblog is restricted to app-network.
+5. Why Use a Custom Network (app-network) Instead of the Default Network?
+   Control: It provides greater control over how services are grouped and interact with each other.
+   Clarity: Defining a custom network makes it explicit which services need to communicate.
+   Scalability: In larger projects with many services, custom networks help organize services into isolated groups.
+   Portability: If this setup is used in different environments, having a custom network simplifies maintaining similar network structures.
+
+## Summary
+
+Using app-network allows both api and myblog services to communicate securely and directly. Each service can reference the other by name (e.g., api) without relying on external ports or localhost, simplifying and securing inter-service communication.
+
+sample in my pc:
+
+```
+$  docker network ls
+NETWORK ID     NAME                                                                 DRIVER    SCOPE
+1d4d2398d163   bridge                                                               bridge    local
+c4f15f070480   docker_app_default                                                   bridge    local
+e1b53e9eb560   host                                                                 host      local
+1668d46163c8   jedy_bridge_network                                                  bridge    local
+06430afd7662   jedy_bridge_network2                                                 bridge    local
+08388e33f978   none                                                                 null      local
+47de3e7a600d   saniewski_mongo-express-docker-extension-desktop-extension_default   bridge    local
+```
+
+```
+
+hp@DESKTOP-I2FR04M MINGW64 ~/Downloads/Jedidiah/Docker_app (main)
+$ docker network inspect jedy_bridge_network
+[
+    {
+        "Name": "jedy_bridge_network",
+        "Id": "1668d46163c80e5b08d881f45db2b95cde1071a10d9b3998ffeeacc3083855e8",
+        "Created": "2024-11-07T15:32:44.728931821Z",
+        "Scope": "local",
+        "Driver": "bridge",
+        "EnableIPv6": false,
+        "IPAM": {
+            "Driver": "default",
+            "Options": {},
+            "Config": [
+                {
+                    "Subnet": "172.19.0.0/16",
+                    "Gateway": "172.19.0.1"
+                }
+            ]
+        },
+        "Internal": false,
+        "Attachable": false,
+        "Ingress": false,
+        "ConfigFrom": {
+            "Network": ""
+        },
+        "ConfigOnly": false,
+        "Containers": {},
+        "Options": {},
+        "Labels": {}
+    }
+]
+
+hp@DESKTOP-I2FR04M MINGW64 ~/Downloads/Jedidiah/Docker_app (main)
+```
+
+In Docker, networks can be classified by their driver types, which determine how they function. Here’s a breakdown of some common network types you see on your system, specifically null, bridge, and host.
+
+1. bridge Network
+   Purpose: The bridge network is Docker’s default network type for standalone containers. It’s commonly used to allow containers to communicate with each other within the same host, as long as they’re connected to the same bridge network.
+   Behavior:
+   When you launch a container without specifying a network, Docker will attach it to the default bridge network.
+   Containers on a custom bridge network can communicate with each other using their container names as hostnames.
+   External traffic can access a container’s exposed ports mapped to the host, allowing limited communication from outside the Docker network.
+   Example: The custom networks you created (jedy_bridge_network, jedy_bridge_network2) use the bridge driver, which allows containers attached to these networks to communicate with each other.
+2. host Network
+   Purpose: The host network removes the network isolation between the Docker container and the Docker host, allowing containers to share the host’s network stack.
+   Behavior:
+   This type of network is mostly used in scenarios where low latency is needed, or where a container needs full access to the host’s network.
+   Containers using the host network can’t be isolated from the host, so they will have the same network interface as the host machine and can be reached directly at the host’s IP address.
+   Limitations: It’s generally not recommended for production environments due to the lack of isolation between the host and container.
+3. null Network
+   Purpose: The null network, also known as none, essentially provides no network access to the container.
+   Behavior:
+   When a container is attached to the none network, it has no network interface other than a loopback interface.
+   This network is useful for cases where network access is not needed or where you want complete network isolation for security purposes.
+   Summary of Your Docker Networks:
+   Bridge networks like jedy_bridge_network and docker_app_default are isolated networks that allow container-to-container communication, but keep each network separate unless explicitly linked.
+   Host gives containers direct access to the host’s network.
+   Null (or none) provides containers with no network access.
+   Each of these network types has its specific use case, and in a Compose setup, custom bridge networks (like app-network in your docker-compose.yml) are typically ideal for enabling container-to-container communication while maintaining network isolation.
+
+```
+version: "3"
+
+services:
+  api:
+    build: ./api
+    image: api_image:v1
+    container_name: api_container
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./api:/app_jedy:delegated
+      - /app_jedy/node_modules
+    networks:
+      app-network:
+        ipv4_address: 172.19.0.10 # Connects `api` to the custom network but we assigned an ip address
+
+  myblog:
+    build: ./myblog
+    image: myblog_image:v1
+    container_name: myblog_container
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./myblog:/app_jedy
+      - /app_jedy/node_modules
+    stdin_open: true
+    tty: true
+    networks:
+      - app-network # Connects `myblog` to the custom network
+
+# Define the custom network
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
+
+```
+
+Service api:
+
+The api service is built from the ./api directory, assigned a custom image name (api_image:v1), and is given a container name of api_container.
+Port 4000 on the container is mapped to port 4000 on the host.
+The service is connected to the app-network network, with an assigned static IP address of 172.19.0.10. This ensures that the api container will always have this IP on the network, making it predictable and easy to reference from other containers.
+Service myblog:
+
+Similar setup as api, with myblog being built from the ./myblog directory, a custom image name (myblog_image:v1), and a container name of myblog_container.
+Port 3000 on the container is mapped to port 3000 on the host.
+This service is also connected to the app-network network but without a static IP, so Docker will automatically assign an IP address within the 172.19.0.0/16 subnet.
+Custom Network app-network:
+
+This network is defined under networks, with driver: bridge.
+The ipam (IP Address Management) section specifies a custom subnet of 172.19.0.0/16. This subnet provides enough IPs for all containers on this network and ensures that the assigned static IP (172.19.0.10 for api) is within this range.
+Summary
+The configuration is valid, with each container able to communicate with the other over the app-network.
+The api service has a fixed IP address (172.19.0.10), while myblog will receive a dynamic IP within the same subnet.
+This setup provides flexibility and predictability, especially if other services will reference api by its IP or network alias.
+Note: Ensure no other networks conflict with the 172.19.0.0/16 subnet to avoid routing issues.
+
+In CIDR notation, /16 refers to the subnet mask, which defines the number of available IP addresses in the range, not the specific numbers from 0 to 16.
+
+Here's how it breaks down:
+
+Understanding /16
+The /16 means that the first 16 bits of the IP address are reserved for the network portion.
+This leaves 16 bits for host addresses (individual devices or containers).
+For the IP range 172.19.0.0/16:
+
+The network part is 172.19.
+The host part is 0.0 to 255.255.
+Resulting IP Range
+This subnet 172.19.0.0/16 allows IPs from:
+
+172.19.0.1 to 172.19.255.254
+This range provides a total of 65,536 IP addresses (including network and broadcast addresses).
+This is a large range, and /16 is often used in local networks where there might be many devices or services to manage.
+
+docker network create --subnet 172.20.0.0/16 --ip-range 172.20.240.0/20 multi-host-network
+ChatGPT said:
+ChatGPT
+The command you provided, docker network create --subnet 172.20.0.0/16 --ip-range 172.20.240.0/20 multi-host-network, creates a custom Docker network with specific IP address configuration. Let’s break it down:
+
+Command Breakdown:
+docker network create: This is the command used to create a new Docker network. By default, Docker creates networks with the bridge driver, but you can customize the network configuration.
+
+--subnet 172.20.0.0/16:
+
+This defines the subnet for the network. The /16 indicates that the network will use a 16-bit subnet mask, which gives a total of 65,536 IP addresses.
+The IP address range for this network will be from 172.20.0.0 to 172.20.255.255.
+--ip-range 172.20.240.0/20:
+
+The IP range specifies a more restricted set of IP addresses within the subnet. In this case, it will only allocate IP addresses from 172.20.240.0 to 172.20.255.255.
+The /20 subnet mask means that only 4,096 IP addresses are available for allocation from 172.20.240.0 to 172.20.255.255.
+multi-host-network:
+
+This is the name of the network being created. You can use any name, and this name will identify the network in Docker.
+Why Use --subnet and --ip-range?
+--subnet defines the overall address space available to the network. It’s important to plan for the correct size based on how many containers you expect to run in the network.
+--ip-range allows you to limit the available IP addresses for container allocation. For example, if you want to ensure that only specific IP addresses within the subnet are used (perhaps for security or administrative reasons), this flag helps you control that.

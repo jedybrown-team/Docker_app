@@ -1,4 +1,5 @@
 version: "3"
+
 services:
   api:
     build: ./api
@@ -9,6 +10,9 @@ services:
     volumes:
       - ./api:/app_jedy:delegated
       - /app_jedy/node_modules
+    networks:
+      app-network:
+        ipv4_address: 172.19.0.10 # Connects `api` to the custom network but we assigned an ip address
 
   myblog:
     build: ./myblog
@@ -21,3 +25,13 @@ services:
       - /app_jedy/node_modules
     stdin_open: true
     tty: true
+    networks:
+      - app-network # Connects `myblog` to the custom network
+
+# Define the custom network
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16
