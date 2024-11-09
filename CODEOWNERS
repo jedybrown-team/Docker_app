@@ -1,8 +1,8 @@
-# Assigns ownership of the frontend directory to the frontend team
+# Assigns ownership of the myblog frontend directory to the frontend team
 
 /myblog/ @frontend-team
 
-# Assigns ownership of the backend directory to the backend team
+# Assigns ownership of the api backend directory to the backend team
 
 /api/ @backend-team
 
