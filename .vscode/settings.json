@@ -1,0 +1,23 @@
+{
+  "files.associations": {
+    "CODEOWNERS": "plaintext"
+  },
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[javascript]": {
+    "editor.formatOnSave": true
+  },
+  "[typescript]": {
+    "editor.formatOnSave": true
+  },
+  "[json]": {
+    "editor.formatOnSave": true,
+    "editor.tabSize": 2
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "[markdown]": {
+    "editor.tabSize": 2
+  }
+}
