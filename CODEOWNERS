@@ -1,10 +1,10 @@
 # Assigns ownership of the frontend directory to the frontend team
 
-/frontend/ @frontend-team
+/myblog/ @frontend-team
 
 # Assigns ownership of the backend directory to the backend team
 
-/backend/ @backend-team
+/api/ @backend-team
 
 # The coordinator has admin rights to everything
 
