@@ -139,3 +139,19 @@ docker run --env-file .env -p 4000:4000 my-express-app
 ## To lists all the services along with their current status:
 
 `docker compose ps`
+
+## Pause a container
+
+`$ docker pause jedy_container`
+
+## Resuming a paused container
+
+`docker unpause jedy_container`
+
+## Stop and restart a container
+
+`docker restart my_container `
+
+## Run commands in a running container - This command opens the "jedy_container" container that is currently running in an interactive shell session (bash)
+
+`docker exec -it jedy_container bash`
